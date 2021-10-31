@@ -6,7 +6,7 @@ from torch import nn
 import wandb
 
 env = gym.make("CartPole-v1")
-input_shape = [4]  # == env.observation_space.shape
+input_shape = 4  # == env.observation_space.shape
 n_outputs = 2
 
 
@@ -15,7 +15,7 @@ class Model(nn.Module):
     def __init__(self):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(4, 32),
+            nn.Linear(input_shape, 32),
             nn.ELU(),
             nn.Linear(32, 32),
             nn.ELU(),
@@ -32,6 +32,9 @@ model = Model()
 
 
 def epsilon_greedy_policy(state, epsilon=0):
+    """
+    Takes a random action with probability epsilon and a greedy one with probability 1-epsilon
+    """
     if torch.rand(1) < epsilon:
         return torch.randint(2, (1,))[0]
     else:
