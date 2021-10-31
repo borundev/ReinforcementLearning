@@ -4,4 +4,5 @@ jupyter
 tensorflow
 gym
 matplotlib
-wandb
+wandb>=0.12.6
+pytorch-lightning>=1.3
