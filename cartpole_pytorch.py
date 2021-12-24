@@ -27,8 +27,8 @@ class Model(nn.Module):
             x = torch.tensor(x)
         return self.model(x)
 
-
 model = Model()
+target_model = Model()
 
 
 def epsilon_greedy_policy(state, epsilon=0):
@@ -71,7 +71,7 @@ def training_step(batch_size):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences
     with torch.no_grad():
-        next_Q_values = model(next_states)
+        next_Q_values = target_model(next_states)
     max_next_Q_values = torch.max(next_Q_values, axis=1).values
     target_Q_values = (rewards +
                        (1 - dones) * discount_factor * max_next_Q_values)
@@ -85,27 +85,47 @@ def training_step(batch_size):
     return loss
 
 
-batch_size = 32
-discount_factor = 0.95
-episodes = 600
+batch_size = 16
+discount_factor = 0.99
+episodes = 200
 lr = 1e-3
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 loss_fn = torch.nn.MSELoss()
 
+
+
 wandb.init(project="RL Cartpole", entity="borundev")
 
-total_rewards = []
-for episode in range(600):
+obs = env.reset()
+for step in range(1000):
+    epsilon = 1
+    obs, reward, done, info = play_one_step(env, obs, epsilon)
+    if done:
+        obs = env.reset()
+
+
+global_step=0
+for episode in range(episodes):
     obs = env.reset()
-    for step in range(200):
+    done=False
+    step=0
+    while step+1<200 and not done:
         epsilon = max(1 - episode / 500, 0.01)
         obs, reward, done, info = play_one_step(env, obs, epsilon)
-        if done:
-            break
-    total_rewards.append(step + 1)
-    if episode > 50:
-        loss=training_step(batch_size)
+
+        if episode % 10 == 0:
+            target_model.load_state_dict(model.state_dict())
+
+        step+=1
+        global_step+=1
+
+        loss = training_step(batch_size)
         wandb.log({"loss": loss})
+
+    wandb.log({"episode": episode + 1})
+    wandb.log({"steps": step+1})
+    print('Episode {} Rewards {}'.format(episode+1,step),end='\r',flush=True)
+
 
 wandb.config = {
     "learning_rate": lr,
@@ -115,6 +135,6 @@ wandb.config = {
 }
 
 
-fig, ax = plt.subplots(figsize=(15,5))
-ax.plot(total_rewards)
-wandb.log({'total_rewards':wandb.Image(ax)})
+#fig, ax = plt.subplots(figsize=(15,5))
+#ax.plot(total_rewards)
+#wandb.log({'total_rewards':wandb.Image(ax)})
