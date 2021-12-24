@@ -1,4 +1,5 @@
 import os
+import sys
 from collections import OrderedDict, deque, namedtuple
 from typing import List, Tuple
 
@@ -52,13 +53,13 @@ class ReplayBuffer:
     def __len__(self) -> None:
         return len(self.buffer)
 
-    def append(self, state, action, reward, done, new_state) -> None:
+    def append(self, experience: Experience) -> None:
         """Add experience to the buffer.
 
         Args:
             experience: tuple of np.array (state, action, reward, done, new_state)
         """
-        self.buffer.append(Experience(state, action, reward, done, new_state))
+        self.buffer.append(experience)
 
     def sample(self, batch_size: int) -> Tuple:
         indices = np.random.choice(len(self.buffer), batch_size, replace=False) # TODO: sample with replacement?
@@ -93,14 +94,14 @@ class RLDataset(IterableDataset):
 class Agent:
     """Base Agent class handling the interaction with the environment."""
 
-    def __init__(self, env: gym.Env, *callbacks) -> None:
+    def __init__(self, env: gym.Env, replay_buffer: ReplayBuffer) -> None:
         """
         Args:
             env: training environment
             replay_buffer: replay buffer storing experiences
         """
         self.env = env
-        self.callbacks=callbacks
+        self.replay_buffer = replay_buffer
         self.state = None
         self.reset()
 
@@ -156,11 +157,9 @@ class Agent:
         # do step in the environment
         new_state, reward, done, _ = self.env.step(action)
 
-        for c in self.callbacks:
-            c(self.state, action, reward, done, new_state)
-        #exp = Experience(self.state, action, reward, done, new_state)
+        exp = Experience(self.state, action, reward, done, new_state)
 
-        #self.replay_buffer.append(exp)
+        self.replay_buffer.append(exp)
 
         self.state = new_state
         if done:
@@ -211,7 +210,7 @@ class DQNLightning(LightningModule):
         self.target_net = DQN(obs_size, n_actions)
 
         self.buffer = ReplayBuffer(self.hparams.replay_size)
-        self.agent = Agent(self.env, self.buffer.append)
+        self.agent = Agent(self.env, self.buffer)
         self.total_reward = 0
         self.episode_reward = 0
         self.populate(self.hparams.warm_start_steps)
@@ -303,11 +302,11 @@ class DQNLightning(LightningModule):
             "steps": torch.tensor(self.global_step).to(device),
             "total_reward": torch.tensor(self.total_reward).to(device),
         }
-        self.log('train/loss', float(loss.detach().numpy()))
-        self.log('train/reward', reward)
+        # self.log('train/loss', float(loss.detach().numpy()))
         self.log('train/global_step', self.global_step)
         self.log('train/episode_reward',self.episode_reward)
         self.log('train/total_reward',self.total_reward)
+        self.log('nb_batch',nb_batch)
 
         return OrderedDict({"loss": loss, "log": log, "progress_bar": status})
 
@@ -318,7 +317,7 @@ class DQNLightning(LightningModule):
 
     def __dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences."""
-        dataset = RLDataset(self.buffer, self.hparams.episode_length)
+        dataset = RLDataset(self.buffer, self.hparams.episode_length) # will return self.hparams.episode_length per iteration
         dataloader = DataLoader(
             dataset=dataset,
             batch_size=self.hparams.batch_size,
