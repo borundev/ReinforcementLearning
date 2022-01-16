@@ -9,7 +9,7 @@ env = gym.make("MountainCar-v0")
 input_shape = 2  # == env.observation_space.shape
 n_outputs = 3
 
-xs=np.linspace(-1.2,0.6,100)
+xs=np.linspace(-1.2,0.5,100)
 vs=np.linspace(-0.07,0.07,100)
 
 X, V = np.meshgrid(xs, vs)
@@ -33,6 +33,54 @@ class Model(nn.Module):
             x = torch.tensor(x)
         return self.model(x)
 
+
+class Tyler(nn.Module):
+    def __init__(self, n, l, xmin=-1.21, xmax=.51, ymin=-.071, ymax=.071, eta=1.2):
+        super().__init__()
+        dxt = eta * (xmax - xmin)
+        dyt = eta * (ymax - ymin)
+
+        self.dXt = np.array([dxt, dyt])
+
+        xmin0 = xmax - dxt
+        ymin0 = ymax - dyt
+
+        self.l = l
+        self.n = n
+
+        x0 = np.random.uniform(xmin0, xmin, self.l - 2)
+        y0 = np.random.uniform(ymin0, ymin, self.l - 2)
+        x0 = np.concatenate([[xmin0], x0, [xmin]])
+        y0 = np.concatenate([[ymin0], y0, [ymin]])
+
+        self.tile0 = np.stack([x0, y0], axis=1)
+
+    def forward(self, x):
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x)
+        x = (((x[:, None, :] - self.tile0[None, ...]) / self.dXt * self.n).type(torch.int) * torch.Tensor(
+            [1, self.n])).sum(
+            axis=2)
+        x = torch.as_tensor(x).type(torch.LongTensor)
+        x = torch.nn.functional.one_hot(x, num_classes=self.n ** 2).reshape(-1, self.l * self.n ** 2)
+        return x.type(torch.float32)
+
+
+class ModelLinear(nn.Module):
+
+    def __init__(self, n=8, l=8):
+        super().__init__()
+        self.model = nn.Sequential(
+            Tyler(n, l),
+            nn.Linear(n * n * l, n_outputs),
+        )
+
+    def forward(self, x):
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x)
+        return self.model(x)
+
+
 model = Model()
 target_model = Model()
 
@@ -49,7 +97,7 @@ def epsilon_greedy_policy(state, epsilon=0):
     Takes a random action with probability epsilon and a greedy one with probability 1-epsilon
     """
     if torch.rand(1) < epsilon:
-        return torch.randint(2, (1,))[0]
+        return torch.randint(3, (1,))[0]
     else:
         with torch.no_grad():
             Q_values = model(state[np.newaxis])
@@ -80,12 +128,21 @@ def play_one_step(env, state, epsilon):
     return next_state, reward, done, info
 
 
-def training_step(batch_size):
+def training_step(batch_size,double=False):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences
-    with torch.no_grad():
-        next_Q_values = target_model(next_states)
-    max_next_Q_values = torch.max(next_Q_values, axis=1).values
+    if not double:
+        with torch.no_grad():
+            next_Q_values = target_model(next_states)
+        max_next_Q_values = torch.max(next_Q_values, axis=1).values
+    else:
+        with torch.no_grad():
+            next_Q_values = model(next_states)
+        best_next_actions = np.argmax(next_Q_values, axis=1)
+        next_mask = torch.nn.functional.one_hot(best_next_actions, n_outputs)
+        with torch.no_grad():
+            max_next_Q_values = (target_model(next_states) * next_mask).sum(axis=1)
+
     target_Q_values = (rewards +
                        (1 - dones) * discount_factor * max_next_Q_values)
     mask = torch.nn.functional.one_hot(actions, n_outputs)
