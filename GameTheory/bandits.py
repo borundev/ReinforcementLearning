@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 class CompetingBandit(nn.Module):
 
-    def __init__(self, payoff_matrix, num_bandits):
+    def __init__(self, payoff_matrix, num_bandits, epsilon=.01):
         super().__init__()
         self.payoff_matrix = payoff_matrix
         self.num_actions = len(self.payoff_matrix)
@@ -18,6 +18,7 @@ class CompetingBandit(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
         self.rs = np.zeros(self.num_bandits)
         self.opt = torch.optim.Adam(self.parameters(), lr=.1)
+        self.epsilon=epsilon
 
     @property
     def pi(self):
@@ -26,7 +27,10 @@ class CompetingBandit(nn.Module):
         return p
 
     def play_one(self):
-        return (np.random.uniform(0, 1, [self.num_bandits, 1]) > self.pi.cumsum(1)).sum(1)
+        if np.random.uniform() > self.epsilon:
+            return (np.random.uniform(0, 1, [self.num_bandits, 1]) > self.pi.cumsum(1)).sum(1)
+        else:
+            return np.random.choice(range(self.num_actions),self.num_bandits)
 
     def get_rewards(self, actions):
         # logic of inverting shuffle based on https://stackoverflow.com/questions/26577517/inverse-of-random-shuffle
@@ -62,7 +66,7 @@ class CompetingBandit(nn.Module):
         self.H.grad.data = torch.tensor((r_diff[:, None] * self.pi))
         self.H.grad.data[np.arange(self.num_bandits), actions] -= torch.tensor(r_diff)
         self.opt.step()
-        self.rs += 1.0 / 50 * r_diff
+        self.rs += 1.0 / 5 * r_diff
 
 
 if __name__ == '__main__':
@@ -78,7 +82,7 @@ if __name__ == '__main__':
     )}
 
     game = 'Rock Paper Scissor'
-    cb = CompetingBandit(payoff_matrix[game], 10000)
+    cb = CompetingBandit(payoff_matrix[game], 2)
     wandb.init(project="Competing Bandits", entity="borundev", name = game)
 
     for s in tqdm(range(10000)):
@@ -88,5 +92,8 @@ if __name__ == '__main__':
             cb.take_rewards(r, actions)
             d = dict(zip(map(lambda x: f'Prob Action {x}',range(1,cb.num_actions+1)),cb.pi.mean(0)))
             wandb.log(d,step=s)
+            d = dict(zip(map(lambda x: f'Prob Agent 1 Action {x}', range(1, cb.num_actions + 1)), cb.pi[0]))
+            wandb.log(d,step=s)
+
         except KeyboardInterrupt:
             break
