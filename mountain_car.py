@@ -123,7 +123,7 @@ def sample_experiences(batch_size):
 
 def play_one_step(env, state, epsilon):
     action = epsilon_greedy_policy(state, epsilon).numpy()
-    next_state, reward, done, info = env.step(action)
+    next_state, reward, done, truncated, info = env.step(action)
     replay_buffer.append((state, action, reward, next_state, done))
     return next_state, reward, done, info
 
@@ -166,18 +166,18 @@ loss_fn = torch.nn.MSELoss()
 
 wandb.init(project="RL Cartpole", entity="borundev")
 
-obs = env.reset()
+obs, info = env.reset()
 for step in range(1000):
     epsilon = 1
     obs, reward, done, info = play_one_step(env, obs, epsilon)
     if done:
-        obs = env.reset()
+        obs, info = env.reset()
 
 
 global_step=0
 max_episode_reward = -200
 for episode in range(episodes):
-    obs = env.reset()
+    obs, info = env.reset()
     done=False
     step=0
     episode_reward=0
