@@ -1,0 +1,267 @@
+\documentclass[11pt,a4paper]{article}
+\pdfoutput=1
+
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amssymb}
+%\usepackage{epstopdf}
+%\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{subfigure}
+\usepackage{listings}    
+\usepackage{bbm}
+\usepackage{cancel}
+\usepackage{relsize}
+%%%%%%% Borun's commands %%%%%%%%%%%%%%
+
+\newcommand\be{\begin{equation}}
+\newcommand\bea{\begin{eqnarray}}
+\newcommand\ee{\end{equation}}
+\newcommand\eea{\end{eqnarray}}
+\newcommand\Regge{\alpha'}
+\newcommand{\bdm}{\begin{displaymath}}
+\newcommand{\edm}{\end{displaymath}}
+\newcommand{\nn}{\nonumber \\}
+\newcommand{\f}[2]{\frac{#1}{#2}}
+\newcommand{\bref}[1]{(\ref{#1})}
+\newcommand\h{\frac{1}{2}}
+\newcommand{\ket}[1]{|#1 \rangle}
+\newcommand{\bra}[1]{\langle #1 |}
+\newcommand{\e}[1]{\mathbb E[#1]}
+\newcommand{\todo}[1]{{\color{cyan}{TODO: #1}}}
+
+\title{Reinforcement Learning}
+\author{Borun D. Chowdhury}
+%\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+
+\section{Bandits}
+
+\subsection{Value Based Models}
+
+Suppose for every action there is a true value
+\bea
+q_*(a) = \e{R|A=a}
+\eea
+which is the expectation of the reward given the action chose is $a$.
+
+We want to 
+\begin{itemize}
+\item Find the true values for each action
+\be
+Q_t(a) := \frac{\sum_{i=1}^{t-1} R_i \delta_{A_i,a}}{\sum_{i=1}^{t-1}  \delta_{A_i,1}} \label{rewardrunningmean}
+\ee
+\item Take the action with the max value
+\be
+A_t := \underset{a}{\text{argmax}} ~ Q_t(a)
+\ee
+\end{itemize}
+
+However, the tricky part is to do them together. For this we can 
+\begin{itemize}
+\item Take an $\epsilon$-greedy approach where we exploit with probability $1-\epsilon$ and explore with probability $\epsilon$,
+\item Use the upper-confidence-bound method (\todo{find the math behind this})
+\be
+A_t := \underset{a}{\text{argmax}} ~ \left[ Q_t(a) + c \sqrt{\frac{\ln(t)}{N_t(a)}}\right]
+\ee
+\end{itemize}
+
+The computation of the running mean for rewards eqn \ref{rewardrunningmean} per action naively requires keeping track of all rewards but we can instead do
+\be
+Q_{n+1} = Q_n + \frac{1}{n} [R_n - Q_n]
+\ee
+Furthermore if the problem is non-stationary we can instead have a fixed parameter $\alpha$ to exponential weight the prior reward
+\bea
+Q_{n+1} &=& Q_n + \alpha [R_n - Q_n] \nn
+&=& (1-\alpha) Q_n + \alpha R_n \nn
+&=& \alpha R_n + (1-\alpha) \alpha R_{n-1} + (1-\alpha)^2 \alpha R_{n-2}  + \dots \nn
+&=& (1-\alpha)^n Q_1 + \alpha \sum_{i=1}^n (1-\alpha)^{n-i} R_i
+\eea
+
+\section{Finite Markov Decision Process}
+
+The notation we follow is 
+\be
+(S_0,A_0,\cancel{R_0}),(S_1,A_1,R_1), \dots
+\ee
+That is we start in state $S_0$, do and action $A_0$ to end up in state $S_1$ and get reward $R_1$. Then the agent does an action $A_1$ and so on.
+
+Thus naturally we have the probability of getting to the next state and getting a reward $p',r$ respectively given we are in state $s$ and take action $a$.
+\be
+p(s',r|s,a) := P(S_t=s',R_t=r|S_{t-1} = s,A_{t-1} = a)
+\ee
+A useful notation is
+\bea
+r(s,a) &:=& \e{R_t | S_{t-1}=s, A_{t-1}=a} \\
+r(s,a,s') &:=& \e{R_t | S_{t-1}=s, A_{t-1}=a, S_t =s'}
+\eea
+We define a discounted (stochastic) reward as
+\bea
+G_t &:=& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
+&=& R_{t+1} + \gamma G_{t+1}
+\eea
+
+Under a policy $\pi$ the value function of a state is {\em defined} as the reward one gets from {\em starting} in the state and following the policy.
+\bea
+v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
+&=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s;\pi} \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{G_{t+1}|S_t=s;\pi} \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{\e{G_{t+1}|S_{t+1}=s',\pi}|S_t=s;\pi}  \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{v_\pi(s') |S_t=s;\pi} \nn
+&=& \sum_a \Bigg[\e{R_{t+1}|S_t=s,a} + \gamma \e{v_\pi(s') |S_t=s,a} \Bigg] \pi(a|s) \nn
+&=& \sum_a \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg] \pi(a|s) 
+\eea
+
+Similarly, the action value function of a state action pair is {\em defined} as the reward one gets from {\em starting in that state and taking that particular action}
+\bea
+q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a;\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a';\pi}|S_t=s, A_t=a;\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a;\pi} \nn
+&=& \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') p(s',a'|s,a) \nn
+&=&  \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') \pi(a'|s') p(s'|s,a)
+\eea
+
+From these we see
+\bea
+v_\pi(s) &=&  \e{G_t|S_t=s;\pi} \nn
+&=& \e{\e{G_t|S_t=s,A_t=a;\pi} } \nn
+&=& \e{q_\pi(s,a)} \nn
+&=& \sum_a q_\pi(s,a) \pi(a|s)
+\eea
+Further we have
+\bea
+q_\pi(s,a) = \sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a)
+\eea
+
+
+We get for the optimal policy
+\bea
+v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg]  \\
+q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\pi(s',a') \right)p(s'|sa)
+\eea
+
+\subsection{Writing the value function as a path integral} \label{Section:PathIntegral}
+
+It is instructive for later (Monte Carlo, Importance Sampling and Policy Gradients) to write the value function as well as state action functions as path integrals.
+
+To this end note that
+\bea
+v_\pi(s) &=& \e{G_t|S_t=s} \nn
+&=& \sum_{k=0}^\infty \gamma^k \e{R_{t+1+k}|S_t=s}
+\eea
+and
+\bea
+q_\pi(s,a) &=& \e{G_t|S_t=s,A_t=a} \nn
+&=& \sum_{k=0}^\infty \gamma^k \e{R_{t+1+k}|S_t=s,A_t=a}
+\eea
+Now we can write
+\bea
+\e{R_{t+1+k}} &=& \sum_{R_{t+1+k}} R_{t+1+k} p(R_{t+1+k}) \nn
+&=& \sum_{R_{t+1+k}, S_t} R_{t+1+k} p(R_{t+1+k}| S_t) \color{blue}{p(S_t)} \nn
+&=&  \sum_{R_{t+1+k}, S_t,A_t} R_{t+1+k} p(R_{t+1+k}| S_t,A_t) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)}  \nn
+&=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} \nn
+&& \qquad \times \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_t,A_t) \nn
+&& \dots \nn
+&&  \qquad \times \pi(A_{t+n}|S_{t+n}) p(S_{t+n}|S_{t+n-1},A_{t+n-1}) \nn
+&& \dots \nn
+&&  \qquad \times \pi(A_{t+k}|S_{t+k}) p(S_{t+k}|S_{t+k-1},A_{t+k-1}) \nn
+&& \Bigg]  \nn
+&& \times p(R_{t+1+k}| S_{t+k},A_{t+k})
+\eea
+From this we can get the value function and state-action terms by taking the {\color{blue} blue} and {\color{blue}blue} and {\color{red}red} terms to 1 in the above expression respectively.
+
+
+Thus if an episode lasts till time $T$ then starting from $t$ we have the sequence \nn$(S_t,A_t),(S_{t+1}, A_{t+1}, R_{t+1}) \dots (S_{T-1}, A_{T-1},R_{T-1}), (S_T,R_T)$
+and
+the probability of a path
+\bea
+p(S_T| S_{T-1},A_{T-1}) \left( \prod_{n=0}^{T-(t+1)-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} \nn
+\eea
+Note also that 
+\bea
+\mathlarger {\mathlarger {\sum_{S,A}}} p(S_T| S_{T-1},A_{T-1}) \left( \prod_{n=0}^{T-(t+1)-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} =1
+\eea
+\bea
+\sum_{k=0}^{T-(t+1)} \gamma^k \mathbb E[R_{t+1+k}] &=& \mathlarger {\mathlarger {\sum_{R,S,A}}}~  \left( \prod_{n=0}^{T-(t+1)-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} \nn
+&\times& \sum_{k=0}^{T-(t+1)} \gamma^k R_{t+1+k} p(R_{t+1+k} | S_{t+k},A_{t+k})
+\eea
+
+
+Another useful way of writing this is
+\bea
+\mathbb E[ R_{t+k}] &=& \sum_{S_T,S_{t+k-1},S_t,R_{t+k}} R_{t+k} p(R_{t+k}|S_{t+k-1}) p(S_T|S_{t+k-1}) p(S_{t+k-1}|S_t) p(S_t) \nn
+&=& \sum_{S_T,S_{t+k-1},A_{t+k-1}, S_t,R_{t+k}} R_{t+k} \pi(A_{t+k-1}|S_{t+k-1}) p(R_{t+k}|S_{t+k-1}, A_{t+k-1}) \nn
+&& \times p(S_T|S_{t+k-1}) p(S_{t+k-1}|S_t) p(S_t) \nn
+&=& \sum_{S_{t+k-1},A_{t+k-1},S_t,R_{t+k}} R_{t+k} \pi(A_{t+k-1}|S_{t+k-1}) p(R_{t+k}|S_{t+k-1}, A_{t+k-1}) p(S_{t+k-1}|S_t) p(S_t) \nn
+\eea
+
+
+\section{Monte Carlo}
+
+\subsection{The idea}
+
+When we do not know the dynamics of the system (i.e. $p(s'|s,a)$ and/or $p(r|s,a)$ then we can sample whole episodes several times to get
+\be
+v_\pi(s), q_\pi(s,a)
+\ee 
+by starting off in state $s$ or in state $s$ and take action $a$ and then follow through till the end of the episode. In doing so we can take the first visit approach where we update the averages for a state or state action pair only for the first visit or we can do this for all the visits. Both converse but proving theorems is easier for the former.
+
+\subsection{Importance Sampling}
+
+From section \ref{Section:PathIntegral} we see that if we write the expectations under two policies - the target $\pi$ and the one used for sampling (when we do MC) $b$ we have
+\bea
+\mathbb E_{\pi}[R_{t+1+k}] &=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} ~ p(R_{t+1+k}| S_{t+k},A_{t+k}) \nn
+&& \times \left( \prod_{n=0}^{k-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+} | S_{t+n}, A_{t+n}) \right) \nn
+&&\times \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} 
+\eea
+Similarly, under a different policy we have
+\bea
+\mathbb E_{b}[R_{t+1+k}] &=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} ~ p(R_{t+1+k}| S_{t+k},A_{t+k}) \nn
+&& \times \left( \prod_{n=0}^{k-1} b(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \nn
+&&\times \color{red}{b(A_t|S_t)} \color{blue}{p(S_t)} 
+\eea
+So clearly we have
+\bea
+\mathbb E_{\pi}[R_{t+1+k}] &=& \mathbb E_{b}[ \left( \prod_{n=0}^{k-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right) {\color{red}\frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )}}   R_{t+1+k}] 
+\eea
+
+Here is an example. Suppose we have a state $s$ and one terminal state $t$. There are only two actions left $L$ and right $R$. The left takes the agent to the terminal state with probability $q$ and return $1$. It takes the agent to the state $s$ with probability $1-q$. Suppose further the target policy has $p(L)=p$ and the exploration policy has $p(L)=\tilde p$. We evaluate the value and variance of the state under the first visit method. Then we have
+
+\bea
+\mathbb E_\pi[G_0] &=& pq \sum_{k=0}^\infty (p (1-q))^k \nn
+&=& \frac{pq}{1-p(1-q)}
+\eea
+We also have
+\bea
+\mathbb E_\pi[G_0^2] &=& pq \sum_{k=0}^\infty (p (1-q))^k \nn
+&=& \frac{pq}{1-p(1-q)}
+\eea
+Thus the variance is 0.
+
+If we compute this with importance sampling we get
+\bea
+\mathbb E_b[G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t}] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{k+1} \nn
+&=& \frac{pq}{1-p(1-q)}
+\eea
+which is the same as under the target policy.
+
+We also get
+\bea
+\mathbb E_b[\left(G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t}\right)^2] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{2(k+1)} \nn
+&=& \frac{qp^2}{\tilde p} \sum_{k=0}^\infty \left( \frac{(1-q) p^2}{\tilde p}\right)^k
+\eea
+This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
+
+For incremental updation of values we take
+\be
+V_n = 
+\ee
+\end{document}
