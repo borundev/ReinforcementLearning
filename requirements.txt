@@ -6,3 +6,5 @@ gym
 matplotlib
 wandb
 pytorch-lightning
+tqdm
+seaborn
