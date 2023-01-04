@@ -9,7 +9,7 @@
 \usepackage{amssymb}
 %\usepackage{epstopdf}
 %\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
-\usepackage{color}
+\usepackage{xcolor}
 \usepackage{amsmath}
 \usepackage{subfigure}
 \usepackage{listings}    
@@ -84,30 +84,107 @@ Q_{n+1} &=& Q_n + \alpha [R_n - Q_n] \nn
 &=& (1-\alpha)^n Q_1 + \alpha \sum_{i=1}^n (1-\alpha)^{n-i} R_i
 \eea
 
-\section{Finite Markov Decision Process}
+\section{Markov Reward Process}
 
-The notation we follow is 
+A Markov Reward Process is a process where one starts off in a state and at each time makes a transition to another state (possibly the same) while earning some rewards
+\be
+(S_0,\cancel{R_0}),(S_1,R_1), \dots
+\ee
+
+The probability to get to state $S_T$ at time step $T$ is
+\be
+p(S_T) = \sum_{S_0} p(S_T|S_0)p(S_0)
+\ee
+Usually the initial state is sharply peaked $p(S_0) = \delta_{S_0,s_0}$ for some $s_0$. We have
+\bea
+\sum_{S_T} p(S_T|S_0) &=& 1 \\
+p(S_T|S_0) &=& \sum_{S_t} p(S_T|S_t)p(S_t,S_0)
+\eea
+
+We then have
+\bea
+E[R_{t+1}|S_0] &=& \sum_{S_T,S_{t},R_{t+1}} R_{t+1} p(S_T,S_{t}) {\color{cyan} p(R_{t+1},S_{t})} p(S_{t},S_0) \nn
+&=& \sum_{S_{t},R_{t+1}} R_{t+1} {\color{cyan} p(R_{t+1},S_{t})} p(S_{t},S_0)
+\eea
+The states after time $t$ do not matter for the expectation value of $R_T$ due to causality.
+
+
+
+\section{Markov Decision Process}
+
+Where Markov Decision Process also involves and agent choosing actions at each step
 \be
 (S_0,A_0,\cancel{R_0}),(S_1,A_1,R_1), \dots
 \ee
-That is we start in state $S_0$, do and action $A_0$ to end up in state $S_1$ and get reward $R_1$. Then the agent does an action $A_1$ and so on.
 
-Thus naturally we have the probability of getting to the next state and getting a reward $p',r$ respectively given we are in state $s$ and take action $a$.
-\be
-p(s',r|s,a) := P(S_t=s',R_t=r|S_{t-1} = s,A_{t-1} = a)
-\ee
-A useful notation is
+Note that
 \bea
-r(s,a) &:=& \e{R_t | S_{t-1}=s, A_{t-1}=a} \\
-r(s,a,s') &:=& \e{R_t | S_{t-1}=s, A_{t-1}=a, S_t =s'}
+p(S_T|S_0) &=& \sum_{S_t,S_0} p(S_T|S_t) p(S_t|S_0) \\
+\sum_{S_T} p(S_T|S_t) &=& 1
 \eea
+Furthermore,
+\bea
+p(S_T|S_0) &=& \sum_{S_t,A_t} p(S_T|S_t,A_t) \pi(A_t|S_t) p (S_t|S_0) \\
+\sum_{S_T} p(S_T|S_t,A_t) &=& 1
+\eea
+
+Thus we have
+\bea
+\mathbb E[R_{t+1}] &=&  \sum_{S_0,S_T,S_t,A_t} R_{t+1} p(S_T|S_t,A_t) {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)} \nn
+&=& \sum_{S_0,S_t,A_t} R_{t+1} {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)}
+\eea
+Thus the states and actions after $t$ do not matter.
+
+We can break the "propagator" into individual time steps so
+\bea
+\mathbb E[ R_{t+1}] &=& \sum_{R_{t+1}, S_0, S_1, \dots S_T, A_0,A_1, A_{T-1}} R_{t+1} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
+&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
+&& \qquad \qquad \dots \nn
+&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
+&& \qquad \times {\color{olive} \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_{t},A_{t}) } \nn
+&& \qquad \qquad {\color{olive} \dots} \nn
+&& \qquad \times {\color{olive} \pi(A_{T-1}|S_{T-1}) p(S_{T-1}|S_{T-2},A_{T-2}) } \nn
+&& \qquad \times {\color{olive} p(S_T)} \nn
+&& \Bigg]  \nn
+&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})} \nn
+&=& \sum_{R_{t+1}, S_0, S_1, \dots S_t, A_0,A_1, A_{t}} R_{t+1} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
+&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
+&& \qquad \qquad \dots \nn
+&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
+&& \Bigg]  \nn
+&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})}
+\eea
+Here the olive colored terms are redundant in that the sum on them can be done directly and will give one. 
+
 We define a discounted (stochastic) reward as
 \bea
 G_t &:=& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
 &=& R_{t+1} + \gamma G_{t+1}
 \eea
 
-Under a policy $\pi$ the value function of a state is {\em defined} as the reward one gets from {\em starting} in the state and following the policy.
+The state value is defined as
+\bea
+v_\pi(s) &=& \mathbb E_\pi[G_0|S_0=s] \nn
+&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s]
+\eea
+Thus, we see why we had the term $\color{blue}{p(S_0)}$ in blue as to compute state values we take this probability to be sharply peaked while summing over all subsequent paths.
+
+Similarly, the action-value is defined as 
+\bea
+q_\pi(s,a) &=& \mathbb E_\pi[G_0|S_0=s,A_0=a] \nn
+&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s,A_0=a]
+\eea
+and we see why we had the term $\color{red}{\pi(A_0|S_0)}$ in red as in this case this term is also sharply peaked and we only sum over subsequent steps. 
+
+Since the process is Markovian the transition probabilities are independent of the time step. We define
+\bea
+p(s'|s,a) = p(S_{t+1}=s'|S_t=s,A_t=a)
+\eea
+and likewise other expressions.
+
+We then get
 \bea
 v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
 &=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s;\pi} \nn
@@ -118,7 +195,7 @@ v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
 &=& \sum_a \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg] \pi(a|s) 
 \eea
 
-Similarly, the action value function of a state action pair is {\em defined} as the reward one gets from {\em starting in that state and taking that particular action}
+Similarly, we get
 \bea
 q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a;\pi} \nn
 &=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a} \nn
@@ -147,77 +224,6 @@ v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s
 q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\pi(s',a') \right)p(s'|sa)
 \eea
 
-\subsection{Writing the value function as a path integral} \label{Section:PathIntegral}
-
-It is instructive for later (Monte Carlo, Importance Sampling and Policy Gradients) to write the value function as well as state action functions as path integrals. First note that we have
-\bea
-p(S_T|S_0) &=& \sum_{S_t,S_0} p(S_T|S_t) p(S_t|S_0) \\
-\sum_{S_T} p(S_T|S_t) &=& 1
-\eea
-Furthermore,
-\bea
-p(S_T|S_0) &=& \sum_{S_t,A_t} p(S_T|S_t,A_t) \pi(A_t|S_t) p (S_t|S_0) \\
-\sum_{S_T} p(S_T|S_t,A_t) &=& 1
-\eea
-
-Thus we have
-\bea
-\mathbb E[R_{t+1}] &=&  \sum_{S_0,S_T,S_t,A_t} R_{t+1} p(S_T|S_t,A_t) {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)} \nn
-&=& \sum_{S_0,S_t,A_t} R_{t+1} {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)}
-\eea
-Thus the states and actions after $t$ do not matter.
-
-To this end note that
-\bea
-v_\pi(s) &=& \e{G_t|S_t=s} \nn
-&=& \sum_{k=0}^\infty \gamma^k \e{R_{t+1+k}|S_t=s}
-\eea
-and
-\bea
-q_\pi(s,a) &=& \e{G_t|S_t=s,A_t=a} \nn
-&=& \sum_{k=0}^\infty \gamma^k \e{R_{t+1+k}|S_t=s,A_t=a}
-\eea
-Now we can write
-\bea
-\e{R_{t+1+k}} &=& \sum_{R_{t+1+k}} R_{t+1+k} p(R_{t+1+k}) \nn
-&=& \sum_{R_{t+1+k}, S_t} R_{t+1+k} p(R_{t+1+k}| S_t) \color{blue}{p(S_t)} \nn
-&=&  \sum_{R_{t+1+k}, S_t,A_t} R_{t+1+k} p(R_{t+1+k}| S_t,A_t) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)}  \nn
-&=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} \Bigg[ \nn
-&& \qquad \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} \nn
-&& \qquad \times \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_t,A_t) \nn
-&& \dots \nn
-&&  \qquad \times \pi(A_{t+n}|S_{t+n}) p(S_{t+n}|S_{t+n-1},A_{t+n-1}) \nn
-&& \dots \nn
-&&  \qquad \times \pi(A_{t+k}|S_{t+k}) p(S_{t+k}|S_{t+k-1},A_{t+k-1}) \nn
-&& \Bigg]  \nn
-&& \times p(R_{t+1+k}| S_{t+k},A_{t+k})
-\eea
-From this we can get the value function and state-action terms by taking the {\color{blue} blue} and {\color{blue}blue} and {\color{red}red} terms to 1 in the above expression respectively.
-
-
-Thus if an episode lasts till time $T$ then starting from $t$ we have the sequence \nn$(S_t,A_t),(S_{t+1}, A_{t+1}, R_{t+1}) \dots (S_{T-1}, A_{T-1},R_{T-1}), (S_T,R_T)$
-and
-the probability of a path
-\bea
-p(S_T| S_{T-1},A_{T-1}) \left( \prod_{n=0}^{T-(t+1)-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} \nn
-\eea
-Note also that 
-\bea
-\mathlarger {\mathlarger {\sum_{S,A}}} p(S_T| S_{T-1},A_{T-1}) \left( \prod_{n=0}^{T-(t+1)-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} =1
-\eea
-\bea
-\sum_{k=0}^{T-(t+1)} \gamma^k \mathbb E[R_{t+1+k}] &=& \mathlarger {\mathlarger {\sum_{R,S,A}}}~  \left( \prod_{n=0}^{T-(t+1)-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} \nn
-&\times& \sum_{k=0}^{T-(t+1)} \gamma^k R_{t+1+k} p(R_{t+1+k} | S_{t+k},A_{t+k})
-\eea
-
-
-Another useful way of writing this is
-\bea
-\mathbb E[ R_{t+k}] &=& \sum_{S_T,S_{t+k-1},S_t,R_{t+k}} R_{t+k} p(R_{t+k}|S_{t+k-1}) p(S_T|S_{t+k-1}) p(S_{t+k-1}|S_t) p(S_t) \nn
-&=& \sum_{S_T,S_{t+k-1},A_{t+k-1}, S_t,R_{t+k}} R_{t+k} \pi(A_{t+k-1}|S_{t+k-1}) p(R_{t+k}|S_{t+k-1}, A_{t+k-1}) \nn
-&& \times p(S_T|S_{t+k-1}) p(S_{t+k-1}|S_t) p(S_t) \nn
-&=& \sum_{S_{t+k-1},A_{t+k-1},S_t,R_{t+k}} R_{t+k} \pi(A_{t+k-1}|S_{t+k-1}) p(R_{t+k}|S_{t+k-1}, A_{t+k-1}) p(S_{t+k-1}|S_t) p(S_t) \nn
-\eea
 
 
 \section{Monte Carlo}
@@ -232,13 +238,13 @@ by starting off in state $s$ or in state $s$ and take action $a$ and then follow
 
 \subsection{Importance Sampling}
 
-From section \ref{Section:PathIntegral} we see that if we write the expectations under two policies - the target $\pi$ and the one used for sampling (when we do MC) $b$ we have
+We have the expectation of a reward under policy $\pi$ 
 \bea
 \mathbb E_{\pi}[R_{t+1+k}] &=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} ~ p(R_{t+1+k}| S_{t+k},A_{t+k}) \nn
 && \times \left( \prod_{n=0}^{k-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+} | S_{t+n}, A_{t+n}) \right) \nn
 &&\times \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} 
 \eea
-Similarly, under a different policy we have
+and under a different policy we have
 \bea
 \mathbb E_{b}[R_{t+1+k}] &=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} ~ p(R_{t+1+k}| S_{t+k},A_{t+k}) \nn
 && \times \left( \prod_{n=0}^{k-1} b(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \nn
@@ -246,8 +252,10 @@ Similarly, under a different policy we have
 \eea
 So clearly we have
 \bea
-\mathbb E_{\pi}[R_{t+1+k}] &=& \mathbb E_{b}[ \left( \prod_{n=0}^{k-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right) {\color{red}\frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )}}   R_{t+1+k}] 
+\mathbb E_{\pi}[R_{t+1+k}] &=& \mathbb E_{b}[ \left( \prod_{n=0}^{k-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right) {\color{red}\frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )}}   R_{t+1+k}]  \nn
+&=&  \mathbb E_{b}[ {\color{olive} \left( \prod_{n=k}^{T-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right)} \left( \prod_{n=0}^{k-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right) {\color{red}\frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )}}   R_{t+1+k}]  \nn
 \eea
+Where in the second line we have written the importance sampling contribution from the full path but the part in olive does not matter as it is after the reward. 
 
 Here is an example. Suppose we have a state $s$ and one terminal state $t$. There are only two actions left $L$ and right $R$. The left takes the agent to the terminal state with probability $q$ and return $1$. It takes the agent to the state $s$ with probability $1-q$. Suppose further the target policy has $p(L)=p$ and the exploration policy has $p(L)=\tilde p$. We evaluate the value and variance of the state under the first visit method. Then we have
 
