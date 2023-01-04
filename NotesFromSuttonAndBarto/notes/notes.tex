@@ -149,7 +149,23 @@ q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\tex
 
 \subsection{Writing the value function as a path integral} \label{Section:PathIntegral}
 
-It is instructive for later (Monte Carlo, Importance Sampling and Policy Gradients) to write the value function as well as state action functions as path integrals.
+It is instructive for later (Monte Carlo, Importance Sampling and Policy Gradients) to write the value function as well as state action functions as path integrals. First note that we have
+\bea
+p(S_T|S_0) &=& \sum_{S_t,S_0} p(S_T|S_t) p(S_t|S_0) \\
+\sum_{S_T} p(S_T|S_t) &=& 1
+\eea
+Furthermore,
+\bea
+p(S_T|S_0) &=& \sum_{S_t,A_t} p(S_T|S_t,A_t) \pi(A_t|S_t) p (S_t|S_0) \\
+\sum_{S_T} p(S_T|S_t,A_t) &=& 1
+\eea
+
+Thus we have
+\bea
+\mathbb E[R_{t+1}] &=&  \sum_{S_0,S_T,S_t,A_t} R_{t+1} p(S_T|S_t,A_t) {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)} \nn
+&=& \sum_{S_0,S_t,A_t} R_{t+1} {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)}
+\eea
+Thus the states and actions after $t$ do not matter.
 
 To this end note that
 \bea
@@ -260,8 +276,5 @@ We also get
 \eea
 This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
 
-For incremental updation of values we take
-\be
-V_n = 
-\ee
+
 \end{document}
