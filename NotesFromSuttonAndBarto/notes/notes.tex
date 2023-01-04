@@ -277,4 +277,44 @@ We also get
 This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
 
 
+\appendix
+
+\section{Importance Sampling Example}
+Note that
+\bea
+v_\pi(s) = \mathbb E_b [ \rho_{t:T-1} G_t | S_t=s]
+\eea
+where $\rho_{t:T-1} = \prod_{k=t}^{T-1} \frac{\pi(A_k|S_k)}{b(A_k|S_k)}$ and
+\bea
+q_\pi(s,a) = \mathbb E_b [ \rho_{t+1:T-1} G_t | S_t=s, A_t=a]
+\eea
+
+
+Suppose we have a sequence $S_0,A_0,R_1,S_1,A_1,R_2,S_2,A_2,R_3,S_3$ where $S_0=S_2=s$ and $A_0=A_2=a$ and $S_1=s',A_1=a'$ then for ordinary importance sampling starting with $Q(S,A)=0$ we get
+\bea
+q(s,a) &=& \frac{G_2 + G_0 \rho_{1:2}}{2} \nn
+&=&  \frac{ R_3 + (R_1 + \gamma R_2 + \gamma^2 R_3) \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)}}{2} \\
+q(s',a') &=& G_1 \rho_{2:2} \nn
+&=& (R_2 + \gamma R_3) \frac{\pi(A_2|S_2)}{b(A_2|S_2)}
+\eea
+whereas for weighted importance sampling we have
+
+\bea
+q(s,a) &=&  \frac{G_2 + G_0 \rho_{1:2}}{1+\rho_{1:2}} \nn
+&=&\frac{ R_3 + (R_1 + \gamma R_2 + \gamma^2 R_3) \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)}}{1+\frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)}} \\
+q(s',a') &=& G_1 \nn
+&=& (R_2 + \gamma R_3)
+\eea
+
+Now note that because of causality we have
+\bea
+\mathbb E_b [ \rho_{t:T-1}R_{t+k} ] = \mathbb E_b [ \rho_{t:t+k-1}R_{t+k} ]
+\eea
+so we could also simply take
+
+\bea
+q(s,a) &=&  \frac{ R_3 + (R_1 + \gamma R_2 \frac{\pi(A_1|S_1)}{b(A_1|S_1)} + \gamma^2 R_3 \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)} ) }{2} \\
+q(s',a') &=& (R_2 + \gamma R_3 \frac{\pi(A_2|S_2)}{b(A_2|S_2)})
+\eea
+
 \end{document}
