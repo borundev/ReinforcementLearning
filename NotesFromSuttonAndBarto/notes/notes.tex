@@ -257,6 +257,83 @@ So clearly we have
 \eea
 Where in the second line we have written the importance sampling contribution from the full path but the part in olive does not matter as it is after the reward. 
 
+
+
+\subsection{Taking Averages}
+
+For Monte Carlo we can talk about two kinds of averages across episodes. The first is {\em ordinary importance sampling} 
+\bea
+V(s) = \frac{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} G_t}{|\mathcal T(s)|}
+\eea
+The way to interpret this is that $\mathcal T(s)$ is the union of all time steps at which the state was $s$. This would be restricted to first visit for first visit MC. T(t) is the first time of termination following $t$. $G_t$ are returns pertaining to time step $t$ and $ \rho_{t:T(t)-1}$ are the importance sampling ratios.
+
+Concretely, we imagine two episodes 
+\begin{itemize}
+\item $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{2} \\
+q(s',a') &=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
+\eea
+\end{itemize}
+\item  $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}}{2} \\
+q(s,\bar a) &=& R_6
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{2} \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} + (R_5+ \gamma R_6)  \frac{ \pi(\bar a|s)}{ b(\bar a|s)}}{3} \\
+q(s,\bar a) &=& R_6
+\eea
+\end{itemize}
+\end{itemize}
+
+
+At this point it makes sense to re-write the above after dropping the importance sampling ratios after the reward.
+ 
+\begin{itemize}
+\item $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)}
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} +R_3}{2} \\
+q(s',a') &=& R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)}
+\eea
+\end{itemize}
+\item  $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=&R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& \frac{R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)} + R_4 + \gamma R_5 \frac{\pi(a'|s') }{b(a'|s') } + \gamma^2 R_6 \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}}{2} \\
+q(s,\bar a) &=& R_6
+\eea
+\item Every Visit
+\bea
+q(s,a) &=&  \frac{R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} +R_3}{2} \\
+q(s',a') &=& \frac{R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)} + R_4 + \gamma R_5 \frac{\pi(a'|s') }{b(a'|s') } + \gamma^2 R_6 \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} + R_5+ \gamma R_6 \frac{ \pi(\bar a|s)}{ b(\bar a|s)}}{3} \\
+q(s,\bar a) &=& R_6
+\eea
+\end{itemize}
+\end{itemize}
+
+
 Here is an example. Suppose we have a state $s$ and one terminal state $t$. There are only two actions left $L$ and right $R$. The left takes the agent to the terminal state with probability $q$ and return $1$. It takes the agent to the state $s$ with probability $1-q$. Suppose further the target policy has $p(L)=p$ and the exploration policy has $p(L)=\tilde p$. We evaluate the value and variance of the state under the first visit method. Then we have
 
 \bea
