@@ -16,6 +16,17 @@
 \usepackage{bbm}
 \usepackage{cancel}
 \usepackage{relsize}
+%\usepackage{listings}
+\usepackage{xcolor}
+%\usepackage{tcolorbox}
+\usepackage[most]{tcolorbox}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+
 %%%%%%% Borun's commands %%%%%%%%%%%%%%
 
 \newcommand\be{\begin{equation}}
@@ -34,6 +45,9 @@
 \newcommand{\e}[1]{\mathbb E[#1]}
 \newcommand{\todo}[1]{{\color{cyan}{TODO: #1}}}
 
+
+
+
 \title{Reinforcement Learning}
 \author{Borun D. Chowdhury}
 %\date{}                                           % Activate to display a given date or no date
@@ -43,9 +57,10 @@
 
 \section{Bandits}
 
+
 \subsection{Value Based Models}
 
-Suppose for every action there is a true value
+Suppose there is a process where one can choose among a set of actions $\{a\}$ that give rewards $R$ then it makes sense to take actions that maximize the reward
 \bea
 q_*(a) = \e{R|A=a}
 \eea
@@ -261,15 +276,17 @@ Where in the second line we have written the importance sampling contribution fr
 
 \subsection{Taking Averages}
 
+\subsubsection{Ordinary Importance Sampling}
+
 For Monte Carlo we can talk about two kinds of averages across episodes. The first is {\em ordinary importance sampling} 
 \bea
 V(s) = \frac{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} G_t}{|\mathcal T(s)|}
 \eea
-The way to interpret this is that $\mathcal T(s)$ is the union of all time steps at which the state was $s$. This would be restricted to first visit for first visit MC. T(t) is the first time of termination following $t$. $G_t$ are returns pertaining to time step $t$ and $ \rho_{t:T(t)-1}$ are the importance sampling ratios.
+The way to interpret this is that $\mathcal T(s)$ is the union of all time steps at which the state was $s$.  If we are discussing first visit MC then this would be restricted to first visit. T(t) is the first time of termination following $t$. $G_t$ are returns pertaining to time step $t$ and $ \rho_{t:T(t)-1}$ are the importance sampling ratios.
 
-Concretely, we imagine two episodes 
+To show how this works we consider an example. We show how the values are updated for first visit and every visit MC for the first two episodes. 
 \begin{itemize}
-\item $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
 \begin{itemize}
 \item First Visit
 \bea
@@ -282,7 +299,7 @@ q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'
 q(s',a') &=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
 \eea
 \end{itemize}
-\item  $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
 \begin{itemize}
 \item First Visit
 \bea
@@ -299,11 +316,12 @@ q(s,\bar a) &=& R_6
 \end{itemize}
 \end{itemize}
 
+\subsubsection{Ordinary Importance Sampling: Per-importance importance sampling}
 
-At this point it makes sense to re-write the above after dropping the importance sampling ratios after the reward.
+At this point it makes sense to {\em re-write the above after dropping the importance sampling ratios after the reward} as they do not make an effect on expectation but increase variance.
  
 \begin{itemize}
-\item $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
 \begin{itemize}
 \item First Visit
 \bea
@@ -316,7 +334,7 @@ q(s,a) &=& \frac{R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \fra
 q(s',a') &=& R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)}
 \eea
 \end{itemize}
-\item  $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\item  Episode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
 \begin{itemize}
 \item First Visit
 \bea
@@ -334,7 +352,108 @@ q(s,\bar a) &=& R_6
 \end{itemize}
 
 
-Here is an example. Suppose we have a state $s$ and one terminal state $t$. There are only two actions left $L$ and right $R$. The left takes the agent to the terminal state with probability $q$ and return $1$. It takes the agent to the state $s$ with probability $1-q$. Suppose further the target policy has $p(L)=p$ and the exploration policy has $p(L)=\tilde p$. We evaluate the value and variance of the state under the first visit method. Then we have
+\subsubsection{Weighted Importance Sampling}
+
+\bea
+V(s) = \frac{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} G_t}{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} }
+\eea
+The way to interpret this is that $\mathcal T(s)$ is the union of all time steps at which the state was $s$.  If we are discussing first visit MC then this would be restricted to first visit. T(t) is the first time of termination following $t$. $G_t$ are returns pertaining to time step $t$ and $ \rho_{t:T(t)-1}$ are the importance sampling ratios.
+
+To show how this works we consider an example. We show how the values are updated for first visit and every visit MC for the first two episodes. 
+\begin{itemize}
+\item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3) \\
+q(s',a') &=& (R_2 + \gamma R_3)
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{\frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+1} \\
+q(s',a') &=& (R_2 + \gamma R_3) 
+\eea
+\end{itemize}
+\item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3)  \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}}{ \frac{\pi(a|s)}{b(a|s)} + \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}} \\
+q(s,\bar a) &=& R_6
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{\frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+1} \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} + (R_5+ \gamma R_6)  \frac{ \pi(\bar a|s)}{ b(\bar a|s)}}{\frac{\pi(a|s)}{b(a|s)} + \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} +\frac{ \pi(\bar a|s)}{ b(\bar a|s)}} \\
+q(s,\bar a) &=& R_6
+\eea
+\end{itemize}
+\end{itemize}
+
+\subsection{Algorithms}
+
+\subsubsection{Every Visit Algorithms}
+Here is the algorithm for on-policy MC prediction.
+
+\begin{tcolorbox}[enhanced,title=On-policy prediction]
+Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $\pi$ generate the sequence $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G=0$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +G}{C(S_t,A_t)+1}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$
+\end{tcolorbox}
+
+The algorithm for off-policy oridinary importance sampling MC prediction is
+
+\begin{tcolorbox}[enhanced,title=Off-policy ordinary importance sampling prediction]
+Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G=0$ \\
+  \phantom{abcd} $W=1$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +W G}{C(S_t,A_t)+1}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
+    \phantom{abcd}   \phantom{abcd}  $W*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
+\end{tcolorbox}
+
+The algorithm for off-policy weighted importance sampling MC prediction is
+
+\begin{tcolorbox}[enhanced,title=Off-policy weighted importance sampling prediction]
+Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G,W=0$ \\
+  \phantom{abcd} $W=1$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +W G}{C(S_t,A_t)+W}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += W$ \\
+    \phantom{abcd}   \phantom{abcd}  $W*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
+\end{tcolorbox}
+The algorithm for off-policy per decision oridinary importance sampling MC prediction is
+
+\begin{tcolorbox}[enhanced,title=Off-policy ordinary importance sampling prediction]
+Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G=0$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) + G}{C(S_t,A_t)+1}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
+    \phantom{abcd}   \phantom{abcd}  $G*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
+\end{tcolorbox}
+
+\subsection{Example}
+
+
+Suppose we have a state $s$ and one terminal state $t$. There are only two actions left $L$ and right $R$. The left takes the agent to the terminal state with probability $q$ and return $1$. It takes the agent to the state $s$ with probability $1-q$. Suppose further the target policy has $\pi(L|s)=p$ and the exploration policy has $b(L|s)=\tilde p$. We evaluate the value and variance of the state under the first visit method. Then we have
 
 \bea
 \mathbb E_\pi[G_0] &=& pq \sum_{k=0}^\infty (p (1-q))^k \nn
@@ -345,7 +464,6 @@ We also have
 \mathbb E_\pi[G_0^2] &=& pq \sum_{k=0}^\infty (p (1-q))^k \nn
 &=& \frac{pq}{1-p(1-q)}
 \eea
-Thus the variance is 0.
 
 If we compute this with importance sampling we get
 \bea
