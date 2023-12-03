@@ -255,24 +255,50 @@ by starting off in state $s$ or in state $s$ and take action $a$ and then follow
 
 We have the expectation of a reward under policy $\pi$ 
 \bea
-\mathbb E_{\pi}[R_{t+1+k}] &=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} ~ p(R_{t+1+k}| S_{t+k},A_{t+k}) \nn
-&& \times \left( \prod_{n=0}^{k-1} \pi(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+} | S_{t+n}, A_{t+n}) \right) \nn
-&&\times \color{red}{\pi(A_t|S_t)} \color{blue}{p(S_t)} 
+\mathbb E_{\pi}[R_{t+1}] &=& \sum_{R_{t+1}, S_0,A_0, \dots S_{t}, A_{t}} R_{t+1} ~ p(R_{t+1}| S_{t},A_{t}) \nn
+&& \times \left( \prod_{n=0}^{t-1} \pi(A_{n+1} | S_{n+1} ) p( S_{n+1} | S_{n}, A_{n}) \right) \nn
+&&\times \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} 
 \eea
 and under a different policy we have
 \bea
-\mathbb E_{b}[R_{t+1+k}] &=& \sum_{R_{t+1+k}, S_t,A_t, \dots S_{t+k}, A_{t+k}} R_{t+1+k} ~ p(R_{t+1+k}| S_{t+k},A_{t+k}) \nn
-&& \times \left( \prod_{n=0}^{k-1} b(A_{t+n+1} | S_{t+n+1} ) p( S_{t+n+1} | S_{t+n}, A_{t+n}) \right) \nn
-&&\times \color{red}{b(A_t|S_t)} \color{blue}{p(S_t)} 
+\mathbb E_{b}[R_{t+1}] &=& \sum_{R_{t+1}, S_0,A_0, \dots S_{t}, A_{t}} R_{t+1} ~ p(R_{t+1}| S_{t},A_{t}) \nn
+&& \times \left( \prod_{n=0}^{t-1} b(A_{n+1} | S_{n+1} ) p( S_{n+1} | S_{n}, A_{n}) \right) \nn
+&&\times \color{red}{b(A_0|S_0)} \color{blue}{p(S_0)} 
 \eea
 So clearly we have
 \bea
-\mathbb E_{\pi}[R_{t+1+k}] &=& \mathbb E_{b}[ \left( \prod_{n=0}^{k-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right) {\color{red}\frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )}}   R_{t+1+k}]  \nn
-&=&  \mathbb E_{b}[ {\color{olive} \left( \prod_{n=k}^{T-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right)} \left( \prod_{n=0}^{k-1} \frac{\pi(A_{t+n+1} | S_{t+n+1} )}{b(A_{t+n+1} | S_{t+n+1} )} \right) {\color{red}\frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )}}   R_{t+1+k}]  \nn
+\mathbb E_{\pi}[R_{t+1}] &=& \mathbb E_{b}[ \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}]  \nn
+&=&  \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}]  \nn
 \eea
 Where in the second line we have written the importance sampling contribution from the full path but the part in olive does not matter as it is after the reward. 
 
+More concretely we have
+\bea
+ \mathbb E_\pi[R_{t+1} | S_0=s] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}|S_0 = s] \nn
+\eea
+and
+\bea
+\mathbb E_\pi[R_{t+1} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{t+1}|S_0 = s,A_0=a] \nn
+\eea
 
+
+In particular
+\bea
+\mathbb E_\pi[R_{1} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)}   R_{1}|S_0 = s,A_0=a] \nn
+\mathbb E_\pi[R_{2} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=2}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{2}|S_0 = s,A_0=a] \nn
+\mathbb E_\pi[R_{3} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=3}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{2} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{3}|S_0 = s,A_0=a] \nn
+\eea
+
+So for instance we can have
+\bea
+\mathbb E_\pi[G_0 | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{black} \left( \prod_{n=1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)}   (R_{1}+ \gamma R_2 + \gamma^2 R_3)|S_0 = s,A_0=a] \nn
+\eea
+But this adds extra noise when sampling because of parts that average to 1 but have variance. So instead one ought to take
+\bea
+\mathbb E_\pi[G_0 | S_0=s,A_0=a] &=& \mathbb E_{b} [R_1 + \gamma  \left( \prod_{n=1}^{1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) R_2 + \gamma^2  \left( \prod_{n=1}^{2} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) R_3 |S_0 = s,A_0=a] \nn
+\eea
+
+If we take a full episode
 
 \subsection{Taking Averages}
 
@@ -287,19 +313,35 @@ The way to interpret this is that $\mathcal T(s)$ is the union of all time steps
 To show how this works we consider an example. We show how the values are updated for first visit and every visit MC for the first two episodes. 
 \begin{itemize}
 \item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+We have
+\bea
+G_0 &=& R_1 + \gamma R_2 + \gamma^2 R_3 \\
+G_1 &=&  R_2 + \gamma R_3 \\
+G_2 &=& R_3 
+\eea
+
 \begin{itemize}
 \item First Visit
 \bea
-q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
-q(s',a') &=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
+q(s,a) &=& G_0 \rho_{1,\infty} \nn
+&=&  (R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& G_1 \rho_{2,\infty}  \nn
+&=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
 \eea
 \item Every Visit
 \bea
-q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{2} \\
-q(s',a') &=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
+q(s,a) &=& \frac{G_2 + G_0 \rho_{1,\infty}}{2} \nn
+&=&  \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{2} \\
+q(s',a') &=& G_1 \rho_{2,\infty}  \nn
+&=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
 \eea
 \end{itemize}
 \item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\bea
+G_0 &=& R_4 + \gamma R_5 + \gamma^2 R_6 \\
+G_1 &=& R_5 + \gamma R_6 \\
+G_2 &=& R_6
+\eea
 \begin{itemize}
 \item First Visit
 \bea
@@ -397,7 +439,7 @@ q(s,\bar a) &=& R_6
 Here is the algorithm for on-policy MC prediction.
 
 \begin{tcolorbox}[enhanced,title=On-policy prediction]
-Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
 Loop over episodes: \\
  \phantom{abcd} Using policy $\pi$ generate the sequence $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
  \phantom{abcd} $G=0$ \\
@@ -410,7 +452,7 @@ Loop over episodes: \\
 The algorithm for off-policy oridinary importance sampling MC prediction is
 
 \begin{tcolorbox}[enhanced,title=Off-policy ordinary importance sampling prediction]
-Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
 Loop over episodes: \\
  \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
  \phantom{abcd} $G=0$ \\
@@ -425,7 +467,7 @@ Loop over episodes: \\
 The algorithm for off-policy weighted importance sampling MC prediction is
 
 \begin{tcolorbox}[enhanced,title=Off-policy weighted importance sampling prediction]
-Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
 Loop over episodes: \\
  \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
  \phantom{abcd} $G,W=0$ \\
@@ -438,8 +480,8 @@ Loop over episodes: \\
 \end{tcolorbox}
 The algorithm for off-policy per decision oridinary importance sampling MC prediction is
 
-\begin{tcolorbox}[enhanced,title=Off-policy ordinary importance sampling prediction]
-Initialize $Q(s,a)=0$ and $C(s,a)=0$ $\forall~s,a$ \\
+\begin{tcolorbox}[enhanced,title=Off-policy per decision ordinary importance sampling prediction]
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
 Loop over episodes: \\
  \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
  \phantom{abcd} $G=0$ \\
